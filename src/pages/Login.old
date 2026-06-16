@@ -1,0 +1,156 @@
+import React, { useState } from "react";
+import loginBg from "./login_bg.png"; // 💡 ログイン画面の背景画像
+
+export const Login = () => {
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+  });
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    
+    try {
+      const response = await fetch("http://localhost:8000/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("ログインに成功しました！");
+        localStorage.setItem("token", data.token); // トークンを保存
+        window.location.href = "/items"; // 次の商品一覧画面へ（仮）
+      } else {
+        const errorMessage = data.detail || data.message || "ログインに失敗しました。";
+        alert(`エラー: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error("エラー:", error);
+      alert("サーバーとの通信に失敗しました。");
+    }
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        backgroundColor: "#f3f4f6",
+      }}
+    >
+      <main
+        style={{
+          width: "430px",
+          height: "932px",
+          position: "relative",
+          overflow: "hidden",
+          backgroundColor: "white",
+          boxShadow: "0 0 20px rgba(0,0,0,0.2)",
+        }}
+      >
+        <img
+          src={loginBg}
+          alt="background"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            zIndex: 10,
+          }}
+        >
+          {/* ユーザー名入力欄 */}
+          <input
+            type="text"
+            placeholder="ユーザー名"
+            value={formData.username}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                username: e.target.value,
+              })
+            }
+            style={{
+              position: "absolute",
+              top: "199px",
+              left: "91px",
+              width: "186px",
+              height: "45px",
+              fontSize: "20px",
+              border: "2px solid blue",
+              backgroundColor: "white",
+              color: "black",
+              zIndex: 100,
+            }}
+          />
+
+          {/* パスワード入力欄 */}
+          <input
+            type="password"
+            placeholder="パスワード"
+            value={formData.password}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                password: e.target.value,
+              })
+            }
+            style={{
+              position: "absolute",
+              top: "355px",
+              left: "95px",
+              width: "236px",
+              height: "44px",
+              fontSize: "20px",
+              border: "2px solid blue",
+              backgroundColor: "white",
+              color: "black",
+              zIndex: 100,
+            }}
+          />
+
+          {/* ログインするボタン (Figmaの指定位置 top-[538px] left-[124px] w-[232px] h-[49px] を透明化) */}
+          <button
+            type="submit"
+            style={{
+              position: "absolute",
+              top: "538px",
+              left: "124px",
+              width: "232px",
+              height: "49px",
+              backgroundColor: "transparent",
+              border: "none",
+              cursor: "pointer",
+              zIndex: 100,
+            }}
+          />
+        </form>
+      </main>
+    </div>
+  );
+};

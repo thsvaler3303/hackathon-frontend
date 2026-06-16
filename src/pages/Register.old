@@ -1,0 +1,199 @@
+import React, { useState } from "react";
+import bgImage from "./bg_image.png";
+
+export const IphonePlus = () => {
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+  });
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    
+    try {
+      const response = await fetch("http://localhost:8000/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+          email: formData.email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("登録が完了しました！ログイン画面へ移動します。");
+        window.location.href = "/login"; 
+      } else {
+        // 💡 FastAPIのエラー（detail）を最優先で画面に出すように改良しました
+        const errorMessage = data.detail || data.message || "リクエストが不正です。形式を確認してください。";
+        alert(`登録に失敗しました: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error("エラー:", error);
+      alert("サーバーとの通信に失敗しました。");
+    }
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        backgroundColor: "#f3f4f6",
+      }}
+    >
+      <main
+        style={{
+          width: "430px",
+          height: "932px",
+          position: "relative",
+          overflow: "hidden",
+          backgroundColor: "white",
+          boxShadow: "0 0 20px rgba(0,0,0,0.2)",
+        }}
+      >
+        <img
+          src={bgImage}
+          alt="background"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            zIndex: 10,
+          }}
+        >
+          <input
+            type="text"
+            placeholder="ユーザー名"
+            value={formData.username}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                username: e.target.value,
+              })
+            }
+            style={{
+              position: "absolute",
+              top: "199px",
+              left: "91px",
+              width: "186px",
+              height: "45px",
+              fontSize: "20px",
+              border: "2px solid blue",
+              backgroundColor: "white",
+              color: "black",
+              zIndex: 100,
+            }}
+          />
+
+          <input
+            type="email"
+            placeholder="メールアドレス"
+            value={formData.email}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                email: e.target.value,
+              })
+            }
+            style={{
+              position: "absolute",
+              top: "269px",
+              left: "95px",
+              width: "267px",
+              height: "47px",
+              fontSize: "20px",
+              border: "2px solid blue",
+              backgroundColor: "white",
+              color: "black",
+              zIndex: 100,
+            }}
+          />
+
+          <input
+            type="password"
+            placeholder="パスワード"
+            value={formData.password}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                password: e.target.value,
+              })
+            }
+            style={{
+              position: "absolute",
+              top: "355px",
+              left: "95px",
+              width: "236px",
+              height: "44px",
+              fontSize: "20px",
+              border: "2px solid blue",
+              backgroundColor: "white",
+              color: "black",
+              zIndex: 100,
+            }}
+          />
+
+          {/* 登録ボタン */}
+          <button
+            type="submit"
+            style={{
+              position: "absolute",
+              top: "466px",
+              left: "106px",
+              width: "169px",
+              height: "51px",
+              backgroundColor: "transparent",
+              border: "none",
+              cursor: "pointer",
+              zIndex: 100,
+            }}
+          />
+
+          {/* すでにアカウントをお持ちの方はこちら */}
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = "/login"; 
+            }}
+            style={{
+              position: "absolute",
+              top: "550px",
+              left: "34px",
+              width: "360px",
+              height: "30px",
+              backgroundColor: "transparent",
+              border: "none",
+              cursor: "pointer",
+              zIndex: 100,
+            }}
+          />
+        </form>
+      </main>
+    </div>
+  );
+};
