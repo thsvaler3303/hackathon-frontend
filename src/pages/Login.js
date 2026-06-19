@@ -28,6 +28,7 @@ export const Login = () => {
                 setSuccess('ログインに成功しました！メイン画面へ移動します。');
                 // ハッカソン用のダミートークンを保存
                 localStorage.setItem('token', data.token);
+                localStorage.setItem('user_id', data.user_id);  //追加　　　　トークンと一緒に、バックエンドから返ってきた実際のユーザーIDを保存
                 
                 //のちほどメイン画面(Items)ができたら、ここを '/items' に自動遷移
                 setTimeout(() => {

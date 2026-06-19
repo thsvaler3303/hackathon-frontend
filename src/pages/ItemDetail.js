@@ -5,13 +5,23 @@ import { Navbar } from '../components/Navbar';
 
 
 const API_BASE_URL = 'https://hackathon-backend-915741123530.us-central1.run.app';
-const TEST_USER_ID = 1; 
+//const TEST_USER_ID = 1; 消した
 
 export const ItemDetail = () => {
     const { id } = useParams();
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    //現在ログインしているユーザーのIDをlocalStorageから取得（未ログインならフォールバックで1）
+    const currentUserId = String(localStorage.getItem('user_id') || '1');
+
+    //いいねの分
+    const [isFavorited, setIsFavorited] = useState(false);
+
+    //コメント用の状態管理
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [commentLoading, setCommentLoading] = useState(false);
     
     //編集モーダル用の状態管理
     const [showEditModal, setShowEditModal] = useState(false);
@@ -25,8 +35,16 @@ export const ItemDetail = () => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/items`);
             const data = await response.json();
+
+            // デバッグ　　　APIから今、実際に何件の商品が届いているかログに出す
+            console.log("--- 詳細画面デバッグ ---");
+            console.log("URLから取得した探したいID:", id, "(型:", typeof id, ")");
+            console.log("APIから届いた全データ:", data);
+
+
+
             if (response.ok && data.status === 'success') {
-                const foundItem = data.items.find(i => i.id === parseInt(id));
+                const foundItem = data.items.find(i => String(i.id) === String(id));
                 if (foundItem) {
                     setItem(foundItem);
                     // 編集用に初期値をセット
@@ -47,11 +65,138 @@ export const ItemDetail = () => {
         }
     };
 
+
+    // コメント一覧を取得する関数
+    const fetchComments = async () => {
+        if (!id) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/items/${id}/comments`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success') {
+                    setComments(data.comments || []);
+                }
+            }
+        } catch (err) {
+            console.error("コメント取得失敗:", err);
+        }
+    };
+
     useEffect(() => {
         fetchItemDetail();
+        fetchComments(); //コメントの初回読み込み
+
+        // 閲覧履歴を localStorage に保存する
+
+        if (id) {
+            // 現在の履歴を取得（なければ空の配列）
+            let history = JSON.parse(localStorage.getItem('view_history') || '[]');
+            
+            // 重複を防ぐため、一度同じIDを削除
+            history = history.filter(itemId => String(itemId) !== String(id));
+            
+            // 先頭に今回のIDを追加
+            history.unshift(String(id));
+            
+            // 直近で見た10件分だけをキープ、多すぎると重くなるため制限する
+            if (history.length > 10) {
+                history = history.slice(0, 10);
+            }
+            
+            // 保存し直す
+            localStorage.setItem('view_history', JSON.stringify(history));
+        }
+
         //警告対策
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
+
+
+    //いいね状態のチェックと切り替え処理
+
+    useEffect(() => {
+        const checkFavoriteStatus = async () => {
+            const currentUserId = localStorage.getItem('user_id');
+            if (!currentUserId || !id) return;
+
+            try {
+                // バックエンドのステータスAPIを叩く
+                const res = await fetch(`${API_BASE_URL}/api/items/${id}/favorite/status?user_id=${currentUserId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        setIsFavorited(data.is_favorited); // サーバから届いた「True/False」をセット
+                    }
+                }
+            } catch (err) {
+                console.error("いいね状態の取得に失敗しました", err);
+            }
+        };
+        checkFavoriteStatus();
+    }, [id]);
+
+    // いいねボタンを押した時に走る関数
+    const handleToggleFavorite = async () => {
+        const currentUserId = localStorage.getItem('user_id');
+        if (!currentUserId) {
+            alert("いいねするにはログインが必要です");
+            window.location.href = '/login';
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/items/${id}/favorite`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: currentUserId })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success') {
+                    setIsFavorited(data.is_favorited); // ハートの色を即座に切り替える
+                }
+            }
+        } catch (err) {
+            alert("いいね処理に失敗しました");
+        }
+    };
+
+    //コメントを送信する関数
+    const handleSendComment = async (e) => {
+        e.preventDefault();
+        const currentUserId = localStorage.getItem('user_id');
+        if (!currentUserId) {
+            alert("コメントするにはログインが必要です");
+            window.location.href = '/login';
+            return;
+        }
+        if (!newComment.strip ? !newComment.trim() : !newComment.trim()) return;
+
+        setCommentLoading(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/items/${id}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: currentUserId,
+                    text: newComment
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success') {
+                    setNewComment(''); // 入力欄を空にする
+                    fetchComments(); // チャット一覧をリロード
+                }
+            }
+        } catch (err) {
+            alert("コメントの送信に失敗しました");
+        } finally {
+            setCommentLoading(false);
+        }
+    };
+
+
 
     // 編集の保存を実行する関数
     const handleUpdate = async () => {
@@ -111,7 +256,17 @@ export const ItemDetail = () => {
         descriptionBox: { backgroundColor: '#161822', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255, 255, 255, 0.05)', lineHeight: '1.7', color: '#E5E7EB', fontSize: '15px', whiteSpace: 'pre-wrap', marginTop: '8px' },
         actionArea: { position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '480px', padding: '0 16px', boxSizing: 'border-box', zIndex: 900 },
         buyButton: { width: '100%', background: 'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)', border: 'none', borderRadius: '14px', padding: '18px', color: '#0D0E12', fontSize: '16px', fontWeight: '750', cursor: 'pointer', boxShadow: '0 8px 25px rgba(0, 242, 254, 0.3)', textAlign: 'center' },
-        
+        // いいね！ボタン用のサイバーネオンピンクスタイル
+        favButton: {display: 'flex',alignItems: 'center',justifyContent: 'center',gap: '8px',width: '100%', backgroundColor: 'transparent',borderRadius: '14px',padding: '12px',fontSize: '14px',fontWeight: '600',cursor: 'pointer',transition: 'all 0.3s ease',marginTop: '16px',boxSizing: 'border-box'},
+
+        //コメント欄用のスタイル
+        commentSection: { marginTop: '32px', width: '100%' },
+        commentBubble: { backgroundColor: '#161822', borderRadius: '14px', padding: '12px 16px', marginBottom: '10px', border: '1px solid rgba(255,255,255,0.03)' },
+        commentHeader: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9CA3AF', marginBottom: '6px', fontWeight: '600' },
+        commentText: { fontSize: '14px', color: '#FFFFFF', margin: 0, lineHeight: '1.5', whiteSpace: 'pre-wrap' },
+        commentInputArea: { display: 'flex', gap: '8px', marginTop: '16px' },
+
+
         //モーダルのスタイル
         modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(5, 5, 5, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '16px', boxSizing: 'border-box' },
         modalCard: { backgroundColor: '#161822', borderRadius: '24px', padding: '24px', width: '100%', maxWidth: '400px', border: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', flexDirection: 'column', gap: '14px' },
@@ -145,9 +300,89 @@ export const ItemDetail = () => {
                 <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600'}}>商品説明</div>
                 <div style={styles.descriptionBox}>{item.description}</div>
 
+                {/*商品説明の下に「いいね！」ボタンを配置 */}
+                <button 
+                    onClick={handleToggleFavorite}
+                    style={{
+                        ...styles.favButton,
+                        border: isFavorited ? '1px solid #ff4b91' : '1px solid rgba(255, 255, 255, 0.15)',
+                        color: isFavorited ? '#ff4b91' : '#9CA3AF',
+                        boxShadow: isFavorited ? '0 0 15px rgba(255, 75, 145, 0.15)' : 'none'
+                    }}
+                >
+                    <span style={{ fontSize: '18px' }}>{isFavorited ? '❤️' : '🤍'}</span>
+                    {isFavorited ? 'いいねを消す' : 'いいね！する'}
+                </button>
+
+                {/*コメント質問チャットエリア */}
+                <div style={styles.commentSection}>
+                    <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '12px'}}>
+                        💬 コメント・質問 ({comments.length})
+                    </div>
+                    
+                    {/* コメント履歴の一覧 */}
+                    {comments.length === 0 ? (
+                        <p style={{fontSize: '13px', color: '#6B7280', textAlign: 'center', padding: '16px 0'}}>この商品への質問・コメントはまだありません。</p>
+                    ) : (
+                        comments.map(c => (
+                            <div key={c.id} style={styles.commentBubble}>
+                                <div style={styles.commentHeader}>
+                                    <span>👤 {c.user_name} <span style={{fontSize: '10px', color: '#4B5563'}}>({c.user_id})</span></span>
+                                    {String(c.user_id) === String(item.user_id) && (
+                                        <span style={{backgroundColor: '#1F222F', color: '#00f2fe', fontSize: '10px', padding: '2px 6px', borderRadius: '4px'}}>出品者</span>
+                                    )}
+                                </div>
+                                <p style={styles.commentText}>{c.text}</p>
+                            </div>
+                        ))
+                    )}
+
+                    {/* コメント入力フォーム */}
+                    <form onSubmit={handleSendComment} style={styles.commentInputArea}>
+                        <input 
+                            style={{...styles.input, marginBottom: 0, flex: 1}} 
+                            type="text" 
+                            placeholder="商品への質問をここに書き込む..." 
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                        />
+                        <button 
+                            type="submit" 
+                            disabled={commentLoading}
+                            style={{
+                                backgroundColor: '#1F222F',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: '#00f2fe',
+                                borderRadius: '10px',
+                                padding: '0 16px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: '600'
+                            }}
+                        >
+                            {commentLoading ? '...' : '送信'}
+                        </button>
+                    </form>
+                </div>
+
+
                 {/* 🔒 ボタンの動的切り替えロジック */}
                 <div style={styles.actionArea}>
-                    {item.user_id === TEST_USER_ID ? (
+                    {item.status === 'sold' ? (
+                        // すでに売り切れている場合は完全に購入をブロック
+                        <button 
+                            style={{
+                                ...styles.buyButton, 
+                                background: '#2A2D3D', 
+                                color: '#6B7280', 
+                                cursor: 'not-allowed', 
+                                boxShadow: 'none'
+                            }}
+                            disabled={true}
+                        >
+                            🛑 この商品は売り切れました
+                        </button>
+                    ) :String(item.user_id) === String(currentUserId) ? (
                         <button 
                             style={{...styles.buyButton, background: 'linear-gradient(90deg, #374151 0%, #1F222F 100%)', color: '#FFFFFF', border: '1px solid rgba(255,255,255,0.2)', boxShadow: 'none'}}
                             onClick={() => setShowEditModal(true)}

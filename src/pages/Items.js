@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; //追加
 import { Header } from '../components/Header';
 import { Navbar } from '../components/Navbar';
 
@@ -6,6 +7,7 @@ import { Navbar } from '../components/Navbar';
 const API_BASE_URL = 'https://hackathon-backend-915741123530.us-central1.run.app';
 
 export const Items = () => {
+    const navigate = useNavigate();
     const [recommendations, setRecommendations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -31,6 +33,34 @@ export const Items = () => {
         fetchRecommendations();
     }, []);
 
+
+    //初期商品の自動拡充APIを呼び出す関数
+    const handleBulkGenerate = async () => {
+        const confirmGenerate = window.confirm("Geminiにリアルな商品を20件自動生成させますか？（10〜15秒ほどかかります）");
+        if (!confirmGenerate) return;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/debug/bulk-generate-items`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === "success") {
+                alert(data.message);
+                // 商品が追加されたので、画面をリロードして最新の一覧にする
+                window.location.reload();
+            } else {
+                alert("生成エラー: " + data.message);
+            }
+        } catch (error) {
+            console.error("通信失敗:", error);
+            alert("サーバーとの通信に失敗しました。");
+        }
+    };
 
     const styles = {
         outerContainer: {
@@ -142,6 +172,34 @@ export const Items = () => {
             color: '#9CA3AF',
             padding: '40px 0',
             fontSize: '14px',
+        },
+
+        /*追加：SOLD用のスタイル群 */
+        soldBadge: {
+            position: 'absolute',
+            top: '12px',
+            left: '-28px',
+            backgroundColor: '#EF4444', // 赤色
+            color: '#FFFFFF',
+            fontWeight: '900',
+            fontSize: '10px',
+            padding: '4px 30px',
+            transform: 'rotate(-45deg)',
+            zIndex: 10,
+            letterSpacing: '1px',
+            boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)',
+        },
+        soldDiagonalLine: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '150%', // 対角線をカバーする長さ
+            height: '2px',
+            backgroundColor: 'rgba(239, 68, 68, 0.6)',
+            transform: 'rotate(45deg)',
+            transformOrigin: 'top left',
+            pointerEvents: 'none',
+            zIndex: 5,
         }
     };
 
@@ -152,9 +210,15 @@ export const Items = () => {
             electronics: '💻',
             books: '📚',
             food: '🍏',
-            rrr: '📦'
+            rrr: '📦',
+            // 👇 Geminiが生成する日本語カテゴリ用
+            'ファッション': '👕',
+            'ガジェット': '📱',
+            '家電': '🔌',
+            '本・ゲーム': '🎮',
+            'その他': '📦'
         };
-        return mapping[category?.toLowerCase()] || '🎁';
+        return mapping[category] || mapping[category?.toLowerCase()] || '🎁';
     };
 
     return (
@@ -163,6 +227,28 @@ export const Items = () => {
             <Header />
 
             <div style={styles.innerContainer}>
+                {/*開発時限定：商品自動生成ボタン */}
+                <div style={{ padding: '0 0 24px 0', textAlign: 'center' }}>
+                    <button 
+                        onClick={handleBulkGenerate}
+                        style={{
+                            backgroundColor: '#161822',
+                            color: '#00f2fe',
+                            border: '1px solid rgba(0, 242, 254, 0.3)',
+                            padding: '12px 20px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            width: '100%',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        開発用Geminiでリアルな商品を20件自動生成
+                    </button>
+                </div>
+
                 <div style={styles.aiSection}>
                     <div style={styles.aiHeader}>
                         <span style={styles.aiBadge}>AI RECOMMEND</span>
@@ -178,12 +264,28 @@ export const Items = () => {
 
                     {!loading && !error && recommendations.length > 0 && (
                         <div style={styles.grid}>
-                            {recommendations.map((item) => (
+                            {recommendations.map((item) => {
+                                const isSold = item.status === 'sold'; //ここでisSoldを安全に定義！
+                                return ( 
                                 <div 
                                     key={item.id} 
-                                    style={styles.card}
-                                    onClick={() => window.location.href = `/items/${item.id}`}
+                                    style={{
+                                        ...styles.card,
+                                        // SOLDの場合は全体的なトーンを暗く、少し透明にする
+                                        opacity: isSold ? 0.55 : 1,
+                                        filter: isSold ? 'brightness(0.7)' : 'none'
+                                    }}
+                                    onClick={() => navigate(`/items/${item.id}`)} // SPA高速遷移へ変更
                                 >
+
+                                    {/* 🚨 売り切れ時のSOLDバッジと斜線のレンダリング */}
+                                    {isSold && (
+                                            <>
+                                                <div style={styles.soldBadge}>SOLD</div>
+                                                <div style={styles.soldDiagonalLine}></div>
+                                            </>
+                                        )}
+
                                     {/* 商品画像エリア（ダミー絵文字） */}
                                     <div style={styles.imagePlaceholder}>
                                         {getEmoji(item.category)}
@@ -192,15 +294,20 @@ export const Items = () => {
                                     
                                     {/* 商品情報エリア */}
                                     <div style={styles.infoArea}>
-                                        <div style={styles.price}>¥{item.price?.toLocaleString()}</div>
+                                        <div style={{
+                                            ...styles.price,
+                                            // SOLDの場合は値段の色をグレーに変更して区別
+                                            color: isSold ? '#9CA3AF' : '#00f2fe'
+                                        }}>¥{item.price?.toLocaleString()}</div>
                                         <h3 style={styles.itemTitle}>{item.title}</h3>
                                         {/* AIからの一言おすすめ理由 */}
                                         <div style={styles.aiReason}>
-                                            💡 {item.ai_reason}
+                                            💡 {item.ai_reason || 'あなたへのおすすめ商品'}
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

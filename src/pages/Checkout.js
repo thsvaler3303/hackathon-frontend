@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Navbar } from '../components/Navbar';
 
@@ -7,6 +7,7 @@ const API_BASE_URL = 'https://hackathon-backend-915741123530.us-central1.run.app
 
 export const Checkout = () => {
     const { id } = useParams();
+    const navigate = useNavigate(); // ナビゲーションの初期化
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [buyLoading, setBuyLoading] = useState(false);
@@ -44,12 +45,18 @@ export const Checkout = () => {
         setBuyLoading(true);
         setError('');
 
+
         try {
+
+            const currentUserId = String(localStorage.getItem('user_id') || '1');
             // バックエンドに購入APIがあればそれを叩く
             // もし未実装の場合は、ステータス変更APIなどを想定。ここでは試行が100%成功するようモック処理も含めて安全に記述
             const response = await fetch(`${API_BASE_URL}/api/items/${id}/buy`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: currentUserId // 動的なログインユーザーIDに差し替えた
+                }),
             });
 
             const data = await response.json();
@@ -63,7 +70,11 @@ export const Checkout = () => {
         } catch (err) {
             // ハッカソンのバックエンド側で /buy APIがまだ未作成なので一旦
             // 一時的に成功モーダルを出す形にして、フロントの手戻りを防ぐ
-            setShowModal(true);
+            //setShowModal(true);
+
+            //通信エラーをログに出し、ユーザーに失敗を伝える
+            console.error('通信エラー:', err);
+            setError('サーバーとの接続に失敗しました。もう一度お試しください。');
         } finally {
             setBuyLoading(false);
         }
@@ -269,9 +280,20 @@ export const Checkout = () => {
                 </div>
 
                 <button 
-                    style={styles.submitButton} 
+                    style={{
+                        ...styles.submitButton,
+                        // 売り切れている場合はボタンをグレーにし、通常時は元のグラデーションにする
+                        background: item.status === 'sold'
+                        ? '#2A2D3D' 
+                        : 'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)',
+                        color: item.status === 'sold' ? '#6B7280' : '#0D0E12',
+                        cursor: item.status === 'sold' ? 'not-allowed' : 'pointer',
+                        boxShadow: item.status === 'sold' ? 'none' : '0 6px 20px rgba(0, 242, 254, 0.2)',
+                    }
+                    } 
                     onClick={handleConfirmBuy}
-                    disabled={buyLoading}
+                    //ローディング中、またはすでに売り切れならボタンを押せなくする
+                    disabled={buyLoading|| item.status === 'sold'}
                 >
                     {buyLoading ? '決済処理中...' : '購入を確定する'}
                 </button>
@@ -288,7 +310,7 @@ export const Checkout = () => {
                         </p>
                         <button 
                             style={styles.modalButton}
-                            onClick={() => window.location.href = '/items'}
+                            onClick={() =>navigate('/items')}  //SPA仕様の遷移へ変更
                         >
                             ホームに戻る
                         </button>

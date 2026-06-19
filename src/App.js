@@ -3,11 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Register } from './pages/Register';
 import { Login } from './pages/Login';
 import { Items } from './pages/Items';
-import { SearchResults } from './pages/SearchResults';
 import { ItemDetail } from './pages/ItemDetail';
 import { Checkout } from './pages/Checkout';
 import { Upload } from './pages/Upload';
 import { Profile } from './pages/Profile'; 
+import { Search } from './pages/Search'; 
 
 function App() {
   return (
@@ -18,7 +18,10 @@ function App() {
         
         {/* フリマアプリの主要取引動線 */}
         <Route path="/items" element={<Items />} />
-        <Route path="/search" element={<SearchResults />} />
+        
+        {/*検索の案内所を、新しく作ったAI類似検索ページだけに */}
+        <Route path="/search" element={<Search />} />
+        
         <Route path="/items/:id" element={<ItemDetail />} />
         <Route path="/items/:id/checkout" element={<Checkout />} />
         <Route path="/upload" element={<Upload />} />

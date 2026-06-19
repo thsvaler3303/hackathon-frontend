@@ -67,9 +67,11 @@ const handleUploadSubmit = async (e) => {
     setError('');
     setMessage('');
 
+    const currentUserId = String(localStorage.getItem('user_id') || '1');
+
     try {
         // 登録、ログインに成功したテストユーザーのIDを指定
-        const testUserId = 1; 
+  //      const testUserId = 1;   消して
 
         const response = await fetch(`${API_BASE_URL}/api/items`, {
             method: 'POST',
@@ -79,7 +81,7 @@ const handleUploadSubmit = async (e) => {
                 price: parseInt(price),
                 description: description,
                 category: category,
-                user_id: testUserId     
+                user_id: currentUserId     //変更
             })
         });
 
