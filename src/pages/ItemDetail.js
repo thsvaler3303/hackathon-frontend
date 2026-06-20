@@ -15,6 +15,9 @@ export const ItemDetail = () => {
     //現在ログインしているユーザーのIDをlocalStorageから取得（未ログインならフォールバックで1）
     const currentUserId = String(localStorage.getItem('user_id') || '1');
 
+    //追加、他への悪影響を防ぐため、初期値をあらかじめセットしておく
+    const [resellerData, setResellerData] = useState({ score: 15, reason: "AIがアカウントを分析中..." });
+
     //いいねの分
     const [isFavorited, setIsFavorited] = useState(false);
 
@@ -52,6 +55,29 @@ export const ItemDetail = () => {
                     setEditPrice(foundItem.price);
                     setEditDesc(foundItem.description);
                     setEditCategory(foundItem.category);
+
+                    //商品の取得に成功したら、裏で単発狙い撃ちの転売ヤー分析APIを叩く
+                    if (foundItem.user_id) {
+                        fetch(`${API_BASE_URL}/api/analyze-reseller/${foundItem.user_id}?current_item_id=${foundItem.id}`)
+                            .then(res => {
+                                if (!res.ok) throw new Error("APIエラー");
+                                return res.json();
+                            })
+                            .then(resellerResult => {
+                                setResellerData({
+                                    score: resellerResult.score,
+                                    reason: resellerResult.reason
+                                });
+                            })
+                            .catch(err => {
+                                console.error("⚠️ 転売分析の取得失敗（安全のため初期値を維持します）:", err);
+                                setResellerData({
+                                    score: 15,
+                                    reason: "AI診断：過去の出品履歴は少なく、一般的な個人ユーザーの可能性が高いです。"
+                                });
+                            });
+                    }
+
                 } else {
                     setError('指定された商品が見つかりませんでした。');
                 }
@@ -254,6 +280,17 @@ export const ItemDetail = () => {
         title: { fontSize: '22px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 12px 0', lineHeight: '1.4' },
         badge: { backgroundColor: '#1F222F', color: '#9CA3AF', fontSize: '12px', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)', marginRight: '8px' },
         descriptionBox: { backgroundColor: '#161822', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255, 255, 255, 0.05)', lineHeight: '1.7', color: '#E5E7EB', fontSize: '15px', whiteSpace: 'pre-wrap', marginTop: '8px' },
+        
+        //追加：AI安心メーター用のデザイン
+        aiRiskCard: { backgroundColor: '#1A1D2D', borderRadius: '16px', padding: '16px', border: '1px solid rgba(255, 255, 255, 0.08)', marginTop: '20px', marginBottom: '20px' },
+        aiRiskHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: '700', marginBottom: '12px' },
+        aiBarContainer: { width: '100%', height: '8px', backgroundColor: '#11121A', borderRadius: '4px', overflow: 'hidden', marginBottom: '10px' },
+        aiRiskReason: { fontSize: '13px', color: '#9CA3AF', lineHeight: '1.5', margin: 0 },
+
+        //AI転売ヤー検知用のデザインを追加
+        aiResellerCard: { backgroundColor: '#1F1625', borderRadius: '16px', padding: '16px', border: '1px solid rgba(244, 63, 94, 0.2)', marginBottom: '20px' },
+        aiResellerHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: '700', marginBottom: '12px' },
+        
         actionArea: { position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '480px', padding: '0 16px', boxSizing: 'border-box', zIndex: 900 },
         buyButton: { width: '100%', background: 'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)', border: 'none', borderRadius: '14px', padding: '18px', color: '#0D0E12', fontSize: '16px', fontWeight: '750', cursor: 'pointer', boxShadow: '0 8px 25px rgba(0, 242, 254, 0.3)', textAlign: 'center' },
         // いいね！ボタン用のサイバーネオンピンクスタイル
@@ -294,12 +331,69 @@ export const ItemDetail = () => {
 
                 <div style={{display: 'flex', marginBottom: '24px'}}>
                     <span style={styles.badge}>カテゴリー: {item.category}</span>
-                    <span style={styles.badge}>出品者ID: {item.user_id}</span>
+                    {/* <span style={styles.badge}>出品者ID: {item.user_id}</span> ここを更新*/}
+                    {/*出品者IDを安全にリンク化 */}
+                    <span 
+                        style={{ ...styles.badge, cursor: 'pointer', border: '1px solid rgba(0, 242, 254, 0.3)', color: '#00f2fe' }}
+                        onClick={() => window.location.href = `/seller/${item.user_id}`}
+                    >
+                        👤 出品者のショップを見る (ID: {item.user_id})
+                    </span>
                 </div>
 
                 <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600'}}>商品説明</div>
                 <div style={styles.descriptionBox}>{item.description}</div>
 
+                {/*追加　　AI安心取引アドバイザーの診断メーター */}
+                <div style={styles.aiRiskCard}>
+                    <div style={styles.aiRiskHeader}>
+                        <span style={{ color: '#00f2fe' }}> AI安心取引アドバイザー診断</span>
+                        <span style={{ 
+                            color: item.ai_risk_score >= 70 ? '#EF4444' : item.ai_risk_score >= 40 ? '#F59E0B' : '#10B981',
+                            fontWeight: '800'
+                        }}>
+                            トラブル危険度: {item.ai_risk_score ?? 0}%
+                        </span>
+                    </div>
+                    
+                    {/* 動的に色と長さが変わるインジケーターバーを設置 */}
+                    <div style={styles.aiBarContainer}>
+                        <div style={{
+                            width: `${item.ai_risk_score ?? 0}%`,
+                            height: '100%',
+                            background: item.ai_risk_score >= 70 
+                                ? 'linear-gradient(90deg, #F59E0B 0%, #EF4444 100%)' // 危険
+                                : item.ai_risk_score >= 40 
+                                    ? '#F59E0B' // 注意
+                                    : 'linear-gradient(90deg, #10B981 0%, #00f2fe 100%)', // 安全
+                            transition: 'width 1s ease-out-cubic'
+                        }} />
+                    </div>
+                    
+                    {/* AIからの具体的な理由・アドバイス文 */}
+                    <p style={styles.aiRiskReason}>
+                        {item.ai_risk_reason || "AI診断：トラブルのリスクは極めて低く、安心してお取引いただけます。"}
+                    </p>
+                </div>
+
+                    {/* ここも修正、新設した resellerData のステートを見るように安全に書き換え */}
+                <div style={styles.aiResellerCard}>
+                    <div style={styles.aiResellerHeader}>
+                        <span style={{ color: '#f43f5e' }}>🚨 AIアカウント分析（転売・業者検知）</span>
+                        <span style={{ 
+                            color: resellerData.score >= 75 ? '#f43f5e' : resellerData.score >= 40 ? '#F59E0B' : '#10B981',
+                            fontWeight: '800'
+                        }}>
+                            転売・業者リスク: {resellerData.score ?? 15}%
+                        </span>
+                    </div>
+                    
+                    {/* AIからの具体的な理由・アドバイス文 */}
+                    <p style={styles.aiRiskReason}>
+                        {resellerData.reason}
+                    </p>
+                </div>
+                    
                 {/*商品説明の下に「いいね！」ボタンを配置 */}
                 <button 
                     onClick={handleToggleFavorite}

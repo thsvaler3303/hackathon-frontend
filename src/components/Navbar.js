@@ -46,6 +46,16 @@ export const Navbar = () => {
                 <span style={{fontSize: '20px'}}>🏠</span>
                 <span>ホーム</span>
             </div>
+
+            {/*AIコンシェルジュ追加 */}
+            <div 
+                onClick={() => window.location.href = '/concierge'} 
+                style={{...styles.navItem, ...(currentPath === '/concierge' ? styles.activeItem : {})}}
+            >
+                <span style={{fontSize: '20px'}}>🔮</span>
+                <span>AI相談</span>
+            </div>
+        
             <div 
                 onClick={() => window.location.href = '/upload'} 
                 style={{...styles.navItem, ...(currentPath === '/upload' ? styles.activeItem : {})}}

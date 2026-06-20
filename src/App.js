@@ -8,6 +8,8 @@ import { Checkout } from './pages/Checkout';
 import { Upload } from './pages/Upload';
 import { Profile } from './pages/Profile'; 
 import { Search } from './pages/Search'; 
+import { AiConcierge } from './pages/AiConcierge';
+import { SellerProfile } from './pages/SellerProfile';
 
 function App() {
   return (
@@ -21,6 +23,12 @@ function App() {
         
         {/*検索の案内所を、新しく作ったAI類似検索ページだけに */}
         <Route path="/search" element={<Search />} />
+
+        {/*AIコンシェルジュ用の新しいルートを追加 */}
+        <Route path="/concierge" element={<AiConcierge />} />
+
+        {/*出品者プロフページへのルート追加*/}
+        <Route path="/seller/:userId" element={<SellerProfile />} />
         
         <Route path="/items/:id" element={<ItemDetail />} />
         <Route path="/items/:id/checkout" element={<Checkout />} />

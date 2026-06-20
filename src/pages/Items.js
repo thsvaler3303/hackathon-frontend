@@ -5,6 +5,7 @@ import { Navbar } from '../components/Navbar';
 
 
 const API_BASE_URL = 'https://hackathon-backend-915741123530.us-central1.run.app';
+//const API_BASE_URL = 'http://127.0.0.1:8000';
 
 export const Items = () => {
     const navigate = useNavigate();
@@ -15,7 +16,45 @@ export const Items = () => {
     useEffect(() => {
         const fetchRecommendations = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/recommendations`);
+                //localStorageから生データを取得してログに出す
+                const rawViewHistory = localStorage.getItem('view_history');
+                console.log("調査1 localStorageの生のview_history:", rawViewHistory);
+
+                const viewHistory = JSON.parse(rawViewHistory || '[]').map(String);
+                console.log("調査2 パースした閲覧履歴配列:", viewHistory);
+                
+                const currentUserId = localStorage.getItem('user_id');
+                console.log("調査3 現在のユーザーID:", currentUserId);
+
+                let purchaseIds = [];
+
+                if (currentUserId) {
+                    try {
+                        const purRes = await fetch(`${API_BASE_URL}/api/users/${currentUserId}/purchases`);
+                        if (purRes.ok) {
+                            const purData = await purRes.json();
+                            console.log(" 調査4 バックエンドから届いた生の購入データ:", purData);
+
+                            if (purData.status === 'success' && purData.purchases) {
+                                purchaseIds = purData.purchases.map(p => {
+                                    const rawId = p.id || p.ID || p.item_id;
+                                    return rawId ? String(rawId) : null;
+                                }).filter(Boolean);
+                                console.log("調査5 整形した購入履歴ID配列:", purchaseIds);
+                            }
+                        }
+                    } catch (purErr) {
+                        console.error("購入履歴の取得失敗:", purErr);
+                    }
+                }
+
+                const totalHistory = Array.from(new Set([...viewHistory, ...purchaseIds]));
+                const historyParam = totalHistory.join(',');
+                
+                //最終的にバックエンドへ送る文字列のログ
+                console.log(" 調査6 最終的にAPIに送る historyParam:", historyParam);
+
+                const response = await fetch(`${API_BASE_URL}/api/recommendations?item_ids=${historyParam}`);
                 const data = await response.json();
                 
                 if (response.ok && data.status === 'success') {
