@@ -152,7 +152,7 @@ export const Login = () => {
     return (
         <div style={styles.container}>
             <div style={styles.card}>
-                <h1 style={styles.title}>NEXT FLEAMARKET</h1>
+                <h1 style={styles.title}>AI-Native Marketplace</h1>
                 <p style={styles.subtitle}>AIログイン認証</p>
 
                 <form onSubmit={handleLogin} style={styles.form}>

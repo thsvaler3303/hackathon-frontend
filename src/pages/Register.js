@@ -150,7 +150,7 @@ export const Register = () => {
     return (
         <div style={styles.container}>
             <div style={styles.card}>
-                <h1 style={styles.title}>NEXT FLEAMARKET</h1>
+                <h1 style={styles.title}>AI-Native Marketplace</h1>
                 <p style={styles.subtitle}>AIが主役の次世代フリマへようこそ</p>
 
                 <form onSubmit={handleSubmit} style={styles.form}>
