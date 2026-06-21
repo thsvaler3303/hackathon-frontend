@@ -196,7 +196,7 @@ export const ItemDetail = () => {
             window.location.href = '/login';
             return;
         }
-        if (!newComment.strip ? !newComment.trim() : !newComment.trim()) return;
+        if ( !newComment.trim() ) return;
 
         setCommentLoading(true);
         try {
