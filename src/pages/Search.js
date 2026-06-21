@@ -12,6 +12,7 @@ export const Search = () => {
     //?q=xxxから検索ワードを抜き出す
     const queryParams = new URLSearchParams(window.location.search);
     const q = queryParams.get('q') || '';
+    const cat = queryParams.get('cat') || ''; //追加
 
     useEffect(() => {
         const fetchSimilarItems = async () => {
@@ -23,7 +24,12 @@ export const Search = () => {
             try {
                 setLoading(true);
                 // バックエンドにのAI類似検索を呼び出す
-                const response = await fetch(`${API_BASE_URL}/api/items/similar?q=${encodeURIComponent(q)}`);
+                // const response = await fetch(`${API_BASE_URL}/api/items/similar?q=${encodeURIComponent(q)}`);
+                let apiUrl = `${API_BASE_URL}/api/items/similar?q=${encodeURIComponent(q)}`;
+                if (cat) {
+                    apiUrl += `&selected_category=${encodeURIComponent(cat)}`;
+                }
+                const response = await fetch(apiUrl);
                 const data = await response.json();
                 
                 if (response.ok && data.status === 'success') {
@@ -39,7 +45,7 @@ export const Search = () => {
         };
 
         fetchSimilarItems();
-    }, [q]);
+    }, [q, cat]);  //「キーワードが変わった時だけでなく、選んだカテゴリが変わった時も検索
 
     const styles = {
         outerContainer: {
@@ -157,7 +163,9 @@ export const Search = () => {
 
             <div style={styles.innerContainer}>
                 <div style={styles.searchInfo}>
-                    <span style={styles.keyword}>「{q}」</span>のAI検索結果 ({items.length}件)
+                    <span style={styles.keyword}>「{q}」</span>
+                    {cat && <span style={{ color: '#E5E7EB', marginRight: '4px' }}>({cat})</span>}
+                    のAI検索結果 ({items.length}件)
                 </div>
 
                 {loading && <div style={styles.statusMessage}>AIが意味を解析して検索中...</div>}

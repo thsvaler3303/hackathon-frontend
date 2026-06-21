@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 
 export const Header = () => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState(''); // 追加
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();
         if (searchQuery.trim()) {
             // 検索結果ページへキーワードを持ってジャンプする
-            window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+            window.location.href = `/search?q=${encodeURIComponent(searchQuery)}&cat=${encodeURIComponent(selectedCategory)}`;
         }
     };
 
@@ -60,6 +61,13 @@ export const Header = () => {
     return (
         <header style={styles.header}>
             <form onSubmit={handleSearchSubmit} style={styles.form}>
+                <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} style={styles.select}>
+                    <option value="" style={styles.option}>全て</option>
+                    <option value="ガジェット" style={styles.option}>📱 ガジェット</option>
+                    <option value="ファッション" style={styles.option}>👕 服</option>
+                    <option value="ゲーム" style={styles.option}>🎮 ゲーム</option>
+                    <option value="本" style={styles.option}>📚 本</option>
+                </select>
                 <input
                     type="text"
                     placeholder="キーワードでAI検索..."
